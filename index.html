@@ -97,6 +97,13 @@
 
   ::placeholder{ color: rgba(148,163,184,0.5); }
 
+  select.field, select.field option{
+    background-color:#0b0714;
+    color:#e5e7eb;
+  }
+
+  #fotoPreview{ transition: opacity .2s ease; }
+
   .spinner{
     border: 2px solid rgba(255,255,255,0.25);
     border-top-color: #fff;
@@ -151,14 +158,11 @@
           <input required type="text" id="setor" list="setorSugestoes" placeholder="Ex: PC-Recepção, Câmera-Portaria"
             class="field w-full rounded-lg px-4 py-3 text-slate-100 text-sm" />
           <datalist id="setorSugestoes">
-            <option value="PC-Recepção"></option>
-            <option value="PC-Financeiro"></option>
-            <option value="Câmera-Portaria"></option>
-            <option value="Câmera-Estacionamento"></option>
-            <option value="Impressora-Administrativo"></option>
+            <option value="Computador"></option>
+            <option value="Impressora"></option>
             <option value="Rede/Wi-Fi"></option>
             <option value="Servidor"></option>
-            <option value="Catraca/Controle de Acesso"></option>
+            
           </datalist>
         </div>
 
@@ -177,6 +181,16 @@
           <label class="mono text-[11px] uppercase tracking-wider text-slate-400 mb-1 block">Descrição Detalhada do Problema *</label>
           <textarea required id="descricao" rows="4" placeholder="Descreva o que está acontecendo com o máximo de detalhes possível..."
             class="field w-full rounded-lg px-4 py-3 text-slate-100 text-sm resize-none"></textarea>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="mono text-[11px] uppercase tracking-wider text-slate-400 mb-1 block">Foto do Problema <span class="normal-case text-slate-500">(opcional)</span></label>
+          <input type="file" id="foto" accept="image/*" capture="environment"
+            class="field w-full rounded-lg px-3 py-2.5 text-slate-300 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-purple-600 file:text-white file:text-xs file:mono file:cursor-pointer" />
+          <div id="fotoPreviewWrap" class="hidden mt-2 flex items-center gap-3">
+            <img id="fotoPreview" class="max-h-28 rounded-lg border border-purple-500/30" />
+            <button type="button" id="fotoRemove" class="mono text-[11px] text-red-400 hover:text-red-300">✕ remover foto</button>
+          </div>
         </div>
 
         <div class="sm:col-span-2">
@@ -242,6 +256,61 @@
     });
   });
 
+  const fotoInput = document.getElementById('foto');
+  const fotoPreviewWrap = document.getElementById('fotoPreviewWrap');
+  const fotoPreview = document.getElementById('fotoPreview');
+  const fotoRemove = document.getElementById('fotoRemove');
+  let fotoBase64 = null;
+  let fotoNome = null;
+
+  function comprimirImagem(file, maxLado = 1280, qualidade = 0.7){
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = () => {
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > height && width > maxLado) { height = height * (maxLado / width); width = maxLado; }
+          else if (height > maxLado) { width = width * (maxLado / height); height = maxLado; }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', qualidade));
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  fotoInput.addEventListener('change', async () => {
+    const file = fotoInput.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showError('Selecione um arquivo de imagem válido.');
+      fotoInput.value = '';
+      return;
+    }
+    try {
+      fotoBase64 = await comprimirImagem(file);
+      fotoNome = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+      fotoPreview.src = fotoBase64;
+      fotoPreviewWrap.classList.remove('hidden');
+    } catch (err) {
+      showError('Não foi possível processar a imagem.');
+    }
+  });
+
+  fotoRemove.addEventListener('click', () => {
+    fotoInput.value = '';
+    fotoBase64 = null;
+    fotoNome = null;
+    fotoPreviewWrap.classList.add('hidden');
+    fotoPreview.src = '';
+  });
+
   function showError(msg){
     formError.textContent = msg;
     formError.classList.remove('hidden');
@@ -271,7 +340,9 @@
       setor: document.getElementById('setor').value.trim(),
       prioridade: prioridadeInput.value,
       descricao: document.getElementById('descricao').value.trim(),
-      tecnico: document.getElementById('tecnico').value
+      tecnico: document.getElementById('tecnico').value,
+      fotoBase64: fotoBase64,
+      fotoNome: fotoNome
     };
 
     submitBtn.disabled = true;
@@ -300,6 +371,10 @@
 
       form.reset();
       priorityButtons.forEach(b => b.removeAttribute('data-active'));
+      fotoBase64 = null;
+      fotoNome = null;
+      fotoPreviewWrap.classList.add('hidden');
+      fotoPreview.src = '';
     } catch (err) {
       showError('Falha ao enviar chamado: ' + err.message);
     } finally {
