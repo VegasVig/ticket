@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vegas TI — Abrir Chamado</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --neon-purple: #a855f7;
+    --neon-blue: #38bdf8;
+    --neon-green: #22d3ee;
+    --neon-yellow: #eab308;
+    --neon-red: #ef4444;
+    --bg-deep: #05040a;
+  }
+  *{ font-family: 'Inter', sans-serif; }
+  .mono{ font-family: 'JetBrains Mono', monospace; }
+  body{
+    background: radial-gradient(ellipse at top, #150c2e 0%, #05040a 55%, #020103 100%);
+    min-height: 100vh;
+    color: #e5e7eb;
+    position: relative;
+    overflow-x: hidden;
+  }
+  body::before{
+    content:'';
+    position: fixed; inset:0;
+    background-image:
+      linear-gradient(rgba(168,85,247,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(168,85,247,0.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    mask-image: radial-gradient(ellipse at 50% 0%, black 0%, transparent 70%);
+    z-index: 0;
+  }
+  .glass{
+    background: rgba(20, 15, 35, 0.55);
+    border: 1px solid rgba(168,85,247,0.25);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 0 40px rgba(168,85,247,0.08), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .glow-border{
+    box-shadow: 0 0 0 1px rgba(168,85,247,0.35), 0 0 24px rgba(168,85,247,0.15);
+  }
+  .field{
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(148,163,184,0.25);
+    transition: all .2s ease;
+  }
+  .field:focus{
+    outline: none;
+    border-color: var(--neon-purple);
+    box-shadow: 0 0 0 3px rgba(168,85,247,0.18), 0 0 20px rgba(168,85,247,0.25);
+    background: rgba(168,85,247,0.05);
+  }
+  .btn-submit{
+    background: linear-gradient(135deg, #7c3aed, #a855f7 45%, #38bdf8);
+    box-shadow: 0 0 24px rgba(168,85,247,0.4), 0 0 48px rgba(56,189,248,0.15);
+    transition: transform .15s ease, box-shadow .2s ease;
+  }
+  .btn-submit:hover{ transform: translateY(-2px); box-shadow: 0 0 32px rgba(168,85,247,0.6), 0 0 64px rgba(56,189,248,0.25); }
+  .btn-submit:active{ transform: translateY(0); }
+  .btn-submit:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+  .priority-option{
+    transition: all .15s ease;
+    cursor: pointer;
+  }
+  .priority-option[data-active="true"]{ transform: translateY(-1px); }
+
+  .p-baixa[data-active="true"]{ border-color:#22c55e; box-shadow:0 0 16px rgba(34,197,94,.45); background:rgba(34,197,94,.08); }
+  .p-media[data-active="true"]{ border-color:#38bdf8; box-shadow:0 0 16px rgba(56,189,248,.45); background:rgba(56,189,248,.08); }
+  .p-alta[data-active="true"]{ border-color:#eab308; box-shadow:0 0 16px rgba(234,179,8,.45); background:rgba(234,179,8,.08); }
+  .p-critica[data-active="true"]{ border-color:#ef4444; box-shadow:0 0 16px rgba(239,68,68,.5); background:rgba(239,68,68,.08); animation: pulse-red 1.4s infinite; }
+  @keyframes pulse-red{
+    0%,100%{ box-shadow:0 0 16px rgba(239,68,68,.5); }
+    50%{ box-shadow:0 0 28px rgba(239,68,68,.85); }
+  }
+
+  .fade-in{ animation: fadeIn .4s ease both; }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  #successOverlay{
+    background: rgba(2,1,3,0.85);
+    backdrop-filter: blur(6px);
+  }
+  .ticket-id-glow{
+    text-shadow: 0 0 12px rgba(56,189,248,.8), 0 0 32px rgba(168,85,247,.6);
+  }
+  .check-ring{
+    animation: ring-pop .5s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  @keyframes ring-pop{ from{ transform: scale(.4); opacity:0; } to{ transform: scale(1); opacity:1; } }
+
+  ::placeholder{ color: rgba(148,163,184,0.5); }
+
+  .spinner{
+    border: 2px solid rgba(255,255,255,0.25);
+    border-top-color: #fff;
+    border-radius: 50%;
+    width: 18px; height:18px;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .scanline{
+    position:absolute; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, transparent, rgba(56,189,248,.6), transparent);
+    animation: scan 3.2s linear infinite;
+  }
+  @keyframes scan{ 0%{ top:0%; } 100%{ top:100%; } }
+</style>
+</head>
+<body class="flex items-center justify-center px-4 py-10">
+
+  <div class="relative z-10 w-full max-w-2xl">
+
+    <!-- Logo / Header -->
+    <div class="flex flex-col items-center mb-6 fade-in">
+      <img src="assets/logo.png" alt="Vegas Vigilância" class="w-64 sm:w-80 mb-2 drop-shadow-[0_0_18px_rgba(168,85,247,0.35)]" />
+      <p class="mono text-xs sm:text-sm tracking-[0.3em] text-cyan-300/80 uppercase">Central de Chamados de TI</p>
+    </div>
+
+    <!-- Form Card -->
+    <form id="ticketForm" class="glass glow-border rounded-2xl p-6 sm:p-8 relative overflow-hidden fade-in">
+      <div class="scanline"></div>
+
+      <div class="flex items-center gap-2 mb-6">
+        <span class="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-[0_0_10px_2px_rgba(168,85,247,0.8)] animate-pulse"></span>
+        <h1 class="mono text-lg sm:text-xl font-bold text-white tracking-wide">ABRIR NOVO CHAMADO</h1>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="sm:col-span-2">
+          <label class="mono text-[11px] uppercase tracking-wider text-slate-400 mb-1 block">Nome do Solicitante *</label>
+          <input required type="text" id="solicitante" placeholder="Ex: Maria Souza"
+            class="field w-full rounded-lg px-4 py-3 text-slate-100 text-sm" />
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="mono text-[11px] uppercase tracking-wider text-slate-400 mb-1 block">WhatsApp do Solicitante <span class="normal-case text-slate-500">(opcional, formato 55DDXXXXXXXXX)</span></label>
+          <input type="tel" id="whatsappSolicitante" placeholder="Ex: 5524999999999" pattern="[0-9]{10,13}"
+            class="field w-full rounded-lg px-4 py-3 text-slate-100 text-sm" />
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="mono text-[11px] uppercase tracking-wider text-slate-400 mb-1 block">Setor / Equipamento *</label>
+          <input required type="text" id="setor" list="setorSugestoes" placeholder="Ex: PC-Recepção, Câmera-Portaria"
+            class="field w-full rounded-lg px-4 py-3 text-slate-100 text-sm" />
+          <datalist id="setorSugestoes">
+            <option value="PC-Recepção"></option>
+            <option value="PC-Financeiro"></option>
+            <option value="Câmera-Portaria"></option>
+            <option value="Câmera-Estacionamento"></option>
+            <option value="Impressora-Administrativo"></option>
+            <option value="Rede/Wi-Fi"></option>
+            <option value="Servidor"></option>
+            <option value="Catraca/Controle de Acesso"></option>
+          </datalist>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="mono text-[11px] uppercase tracking-wider text-slate-400 mb-1 block">Nível de Urgência *</label>
+          <input type="hidden" id="prioridade" required />
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
+            <button type="button" data-value="Baixa" class="priority-option p-baixa field rounded-lg py-2.5 text-xs mono text-slate-300">🟢 Baixa</button>
+            <button type="button" data-value="Média" class="priority-option p-media field rounded-lg py-2.5 text-xs mono text-slate-300">🔵 Média</button>
+            <button type="button" data-value="Alta" class="priority-option p-alta field rounded-lg py-2.5 text-xs mono text-slate-300">🟠 Alta</button>
+            <button type="button" data-value="Crítica" class="priority-option p-critica field rounded-lg py-2.5 text-xs mono text-slate-300">🔴 Crítica</button>
+          </div>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="mono text-[11px] uppercase tracking-wider text-slate-400 mb-1 block">Descrição Detalhada do Problema *</label>
+          <textarea required id="descricao" rows="4" placeholder="Descreva o que está acontecendo com o máximo de detalhes possível..."
+            class="field w-full rounded-lg px-4 py-3 text-slate-100 text-sm resize-none"></textarea>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="mono text-[11px] uppercase tracking-wider text-slate-400 mb-1 block">Técnico Responsável *</label>
+          <select required id="tecnico" class="field w-full rounded-lg px-4 py-3 text-slate-100 text-sm">
+            <option value="" disabled selected>Selecione um técnico</option>
+            <option value="André">André</option>
+            <option value="Cefas">Cefas</option>
+            <option value="Fernando">Fernando</option>
+          </select>
+        </div>
+      </div>
+
+      <p id="formError" class="hidden text-red-400 text-xs mono mt-4"></p>
+
+      <button type="submit" id="submitBtn"
+        class="btn-submit w-full mt-6 rounded-xl py-3.5 text-white font-bold mono tracking-wide flex items-center justify-center gap-2">
+        <span id="submitLabel">🚀 ABRIR CHAMADO</span>
+      </button>
+
+      <p class="text-center text-[10px] text-slate-500 mono mt-4 tracking-wider">VEGAS VIGILÂNCIA E SEGURANÇA · SISTEMA DE CHAMADOS TI</p>
+    </form>
+  </div>
+
+  <!-- Success Overlay -->
+  <div id="successOverlay" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <div class="glass glow-border rounded-2xl p-8 max-w-md w-full text-center fade-in">
+      <div class="check-ring mx-auto mb-4 w-16 h-16 rounded-full flex items-center justify-center border-2 border-emerald-400 shadow-[0_0_24px_rgba(52,211,153,0.6)]">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <p class="mono text-xs uppercase tracking-widest text-slate-400 mb-1">Chamado registrado</p>
+      <h2 id="ticketIdDisplay" class="ticket-id-glow mono text-3xl font-extrabold text-white mb-4">#VEGAS-0000</h2>
+      <p class="text-sm text-slate-300 mb-6">O alerta foi preparado para o técnico responsável. Clique abaixo para enviar via WhatsApp.</p>
+
+      <a id="whatsappBtn" target="_blank" rel="noopener"
+        class="block w-full rounded-xl py-3 mb-3 font-bold mono text-white bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_24px_rgba(52,211,153,0.4)] hover:shadow-[0_0_36px_rgba(52,211,153,0.6)] transition-all">
+        💬 ENVIAR ALERTA NO WHATSAPP
+      </a>
+      <button id="newTicketBtn" class="w-full rounded-xl py-3 font-semibold mono text-slate-300 border border-slate-600 hover:border-purple-400 hover:text-white transition-all">
+        + Novo Chamado
+      </button>
+    </div>
+  </div>
+
+<script>
+  // ⚠️ SUBSTITUA pela URL do seu Web App do Google Apps Script (ver Code.gs)
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBZD_Wn6zGAiErrwawOA-3ZVEdFL0yt60ndYyaMmEAXELVbLMf5ty8s-DL7OBirJqJ/exec';
+
+  const form = document.getElementById('ticketForm');
+  const prioridadeInput = document.getElementById('prioridade');
+  const priorityButtons = document.querySelectorAll('.priority-option');
+  const submitBtn = document.getElementById('submitBtn');
+  const submitLabel = document.getElementById('submitLabel');
+  const formError = document.getElementById('formError');
+
+  priorityButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      priorityButtons.forEach(b => b.removeAttribute('data-active'));
+      btn.setAttribute('data-active', 'true');
+      prioridadeInput.value = btn.dataset.value;
+    });
+  });
+
+  function showError(msg){
+    formError.textContent = msg;
+    formError.classList.remove('hidden');
+  }
+  function clearError(){
+    formError.classList.add('hidden');
+    formError.textContent = '';
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearError();
+
+    if (!prioridadeInput.value) {
+      showError('Selecione o nível de urgência.');
+      return;
+    }
+    if (APPS_SCRIPT_URL.indexOf('COLOQUE_AQUI') !== -1) {
+      showError('Configuração pendente: defina APPS_SCRIPT_URL neste arquivo.');
+      return;
+    }
+
+    const payload = {
+      action: 'create',
+      solicitante: document.getElementById('solicitante').value.trim(),
+      whatsappSolicitante: document.getElementById('whatsappSolicitante').value.trim(),
+      setor: document.getElementById('setor').value.trim(),
+      prioridade: prioridadeInput.value,
+      descricao: document.getElementById('descricao').value.trim(),
+      tecnico: document.getElementById('tecnico').value
+    };
+
+    submitBtn.disabled = true;
+    submitLabel.innerHTML = '<span class="spinner inline-block align-middle"></span> ENVIANDO...';
+
+    try {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS no Apps Script
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (!data.ok) throw new Error(data.error || 'Erro desconhecido ao criar chamado.');
+
+      document.getElementById('ticketIdDisplay').textContent = '#' + data.id;
+      document.getElementById('whatsappBtn').href = data.whatsappLink;
+
+      const overlay = document.getElementById('successOverlay');
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+
+      // tenta abrir o WhatsApp automaticamente; se o navegador bloquear o popup,
+      // o botão na tela de sucesso serve como ação manual de fallback.
+      window.open(data.whatsappLink, '_blank');
+
+      form.reset();
+      priorityButtons.forEach(b => b.removeAttribute('data-active'));
+    } catch (err) {
+      showError('Falha ao enviar chamado: ' + err.message);
+    } finally {
+      submitBtn.disabled = false;
+      submitLabel.textContent = '🚀 ABRIR CHAMADO';
+    }
+  });
+
+  document.getElementById('newTicketBtn').addEventListener('click', () => {
+    const overlay = document.getElementById('successOverlay');
+    overlay.classList.add('hidden');
+    overlay.classList.remove('flex');
+  });
+</script>
+</body>
+</html>
